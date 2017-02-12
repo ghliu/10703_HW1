@@ -140,6 +140,7 @@ class QueueEnv(Env):
         prob = random.random()
         for (p, nextState, reward, is_terminal) in self.P[self.state][action]:
             if prob <= p:
+                self.state = nextState # ???
                 return (nextState, reward, is_terminal, {}) 
             prob -= p   
         return None, None, None, None
