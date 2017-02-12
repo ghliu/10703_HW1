@@ -35,11 +35,74 @@ class QueueEnv(Env):
 
     def __init__(self, p1, p2, p3):
         self.action_space = spaces.Discrete(4)
-        self.observation_space = spaces.MultiDiscrete(
-            [(1, 3), (0, 5), (0, 5), (0, 5)])
-        self.nS = 0
-        self.nA = 0
-        self.P = dict()
+        self.observation_space = spaces.MultiDiscrete([(1, 3), (0, 5), (0, 5), (0, 5)])
+        self.receivingProb = {0:p1,1:p2,2:p3}
+        #self.nS = 3*7 # 0,1,2,3,4,5 + no_consume items for 3 queues
+        self.nS = 3*6*6*6 
+        self.nA = 4 
+        self.P = {s : {a : [] for a in range(nA)} for s in range(nS)}
+        self.state = (1,0,0,0) #???
+        #for nQueues in range(len(3)): # iterate for queues 
+            # read current 
+            #for nStates in range(6): # iterate for states for number of items 
+                # case: read current and it's current
+                # 0-4 items get a new item with probability -> transition to state 
+                # 1-5 items get reward & delete an item
+                # ---> prob p1 to remain same state for queues with 1-5 items .
+                #            1-p1 to transit to prev state for queues with 1-5 items.
+                #           p1 to transit to next state for queues with 0 item.  
+                #           1-p1 to remain same state for queues with 0 item. 
+                # case: others 
+                # ---> prob p1 to transit to next state for queues with 0-4 items. 
+                #           1-p1 to remain the same state for queues with 0-4 items.
+                #           1 to remain the same state for queues with 5 items.  
+
+        # read on current queue
+        for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
+            self.P[(act,q1,q2,q3)] = {}
+            for act in range(1,4):
+                self.P[(act,q1,q2,q3)][act] = []
+                if act == 1:
+                    if q1 != 0:
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p1,(act,q1,q2,q3),1.0,False), \
+                             (p2,(act,q1-1,min(q2+1,6),q3),1.0,False), \
+                             (p3,(act,q1-1,q2,min(q3+1,6)),1.0,False)]
+                    else:
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p1,(act,q1+1,q2,q3),0.0,False), \
+                             (p2,(act,q1,min(q2+1,6),q3),0.0,False), \
+                             (p3,(act,q1,q2,min(q3+1,6)),0.0,False)]
+                elif act == 2:
+                    if q2 != 0:
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p2,(act,q1,q2,q3),1.0,False), \
+                             (p1,(act,min(q1+1,6),q2-1,q3),1.0,False), \
+                             (p3,(act,q1,q2-1,min(q3+1,6)),1.0,False)]
+                    else:
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p2,(act,q1,q2+1,q3),0.0,False), \
+                             (p1,(act,min(q1+1,6),q2,q3),0.0,False), \
+                             (p3,(act,q1,q2,min(q3+1)),0.0,False)]
+                elif act == 3:
+                    if q3 !=0:
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p3,(act,q1,q2,q3),1.0), \
+                             (p1,(act,q1,min(q2+1,6),q3-1),1.0,False), \
+                             (p2,(act,min(q1+1,6),q2,q3-1),1.0,False)]
+                    else: 
+                        self.P[(act,q1,q2,q3)][3]+= \
+                            [(p3,(act,q1,q2,q3+1),0.0), \
+                             (p1,(act,min(q1+1,6),q2,q3),0.0,False), \
+                             (p2,(act,q1,min(q2+1,6),q3),0.0,False)]
+
+        # transit to other queue
+        for (q_from, q_to) in [(x,y) for x in range(1,4) for y in range(1,4)]:
+            for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
+                if q_to-1 not in self.P[(q_from,q1,q2,q3)]:
+                    self.P[(q_from,q1,q2,q3)][q_to-1]=[(1.0,(q_to,q1,q2,q3),0.0)]
+                else:
+                    self.P[(q_from,q1,q2,q3)][q_to-1].append((1.0,(q_to,q1,q2,q3),0.0))
 
     def _reset(self):
         """Reset the environment.
@@ -53,7 +116,8 @@ class QueueEnv(Env):
           (current queue, num items in 1, num items in 2, num items in
           3).
         """
-        return None
+        self.state[0] = 1
+        return self.state # should be elements cleaned up? 
 
     def _step(self, action):
         """Execute the specified action.
@@ -72,6 +136,12 @@ class QueueEnv(Env):
           state. debug_info is a dictionary. You can fill debug_info
           with any additional information you deem useful.
         """
+        # how to get the current state? 
+        prob = random.random()
+        for (p, nextState, reward, is_terminal) in self.P[self.state][action]:
+            if prob <= p:
+                return (nextState, reward, is_terminal, {}) 
+            prob -= p   
         return None, None, None, None
 
     def _render(self, mode='human', close=False):
@@ -106,7 +176,9 @@ class QueueEnv(Env):
         [(prob, nextstate, reward, is_terminal), ...]
           List of possible outcomes
         """
-        return None
+        return self.P[state][action]
+
+        #return None
 
     def get_action_name(self, action):
         if action == QueueEnv.SERVICE_QUEUE:
