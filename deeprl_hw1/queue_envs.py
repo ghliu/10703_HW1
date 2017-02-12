@@ -42,20 +42,17 @@ class QueueEnv(Env):
         self.nA = 4 
         self.P = {s : {a : [] for a in range(nA)} for s in range(nS)}
         self.state = (1,0,0,0) #???
-        #for nQueues in range(len(3)): # iterate for queues 
-            # read current 
-            #for nStates in range(6): # iterate for states for number of items 
-                # case: read current and it's current
-                # 0-4 items get a new item with probability -> transition to state 
-                # 1-5 items get reward & delete an item
-                # ---> prob p1 to remain same state for queues with 1-5 items .
-                #            1-p1 to transit to prev state for queues with 1-5 items.
-                #           p1 to transit to next state for queues with 0 item.  
-                #           1-p1 to remain same state for queues with 0 item. 
-                # case: others 
-                # ---> prob p1 to transit to next state for queues with 0-4 items. 
-                #           1-p1 to remain the same state for queues with 0-4 items.
-                #           1 to remain the same state for queues with 5 items.  
+        # case: read current and it's current
+        # 0-4 items get a new item with probability -> transition to state 
+        # 1-5 items get reward & delete an item
+        # ---> prob p1 to remain same state for queues with 1-5 items .
+        #            1-p1 to transit to prev state for queues with 1-5 items.
+        #           p1 to transit to next state for queues with 0 item.  
+        #           1-p1 to remain same state for queues with 0 item. 
+        # case: others 
+        # ---> prob p1 to transit to next state for queues with 0-4 items. 
+        #           1-p1 to remain the same state for queues with 0-4 items.
+        #           1 to remain the same state for queues with 5 items.  
 
         # read on current queue
         for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
@@ -100,9 +97,15 @@ class QueueEnv(Env):
         for (q_from, q_to) in [(x,y) for x in range(1,4) for y in range(1,4)]:
             for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
                 if q_to-1 not in self.P[(q_from,q1,q2,q3)]:
-                    self.P[(q_from,q1,q2,q3)][q_to-1]=[(1.0,(q_to,q1,q2,q3),0.0)]
+                    self.P[(q_from,q1,q2,q3)][q_to-1]= \
+                          [(p1,(q_to,min(q1+1,6),q2,q3),0.0), \
+                           (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
+                           (p3,(q_to,q1,q2,min(q3+1,6)),0.0)]
                 else:
-                    self.P[(q_from,q1,q2,q3)][q_to-1].append((1.0,(q_to,q1,q2,q3),0.0))
+                    self.P[(q_from,q1,q2,q3)][q_to-1] += \
+                          [(p1,(q_to,min(q1+1,6),q2,q3),0.0), \
+                           (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
+                           (p3,(q_to,q1,q2,min(q3+1,6)),0.0)]
 
     def _reset(self):
         """Reset the environment.
