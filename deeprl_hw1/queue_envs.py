@@ -37,11 +37,10 @@ class QueueEnv(Env):
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.MultiDiscrete([(1, 3), (0, 5), (0, 5), (0, 5)])
         self.receivingProb = {0:p1,1:p2,2:p3}
-        #self.nS = 3*7 # 0,1,2,3,4,5 + no_consume items for 3 queues
         self.nS = 3*6*6*6 
         self.nA = 4 
         self.P = {s : {a : [] for a in range(nA)} for s in range(nS)}
-        self.state = (1,0,0,0) #???
+        self.s = (1,0,0,0) #???
         # case: read current and it's current
         # 0-4 items get a new item with probability -> transition to state 
         # 1-5 items get reward & delete an item
@@ -119,8 +118,8 @@ class QueueEnv(Env):
           (current queue, num items in 1, num items in 2, num items in
           3).
         """
-        self.state[0] = 1
-        return self.state # should be elements cleaned up? 
+        self.s[0] = 1
+        return self.s # should be elements cleaned up? 
 
     def _step(self, action):
         """Execute the specified action.
@@ -141,15 +140,22 @@ class QueueEnv(Env):
         """
         # how to get the current state? 
         prob = random.random()
-        for (p, nextState, reward, is_terminal) in self.P[self.state][action]:
+        for (p, nextState, reward, is_terminal) in self.P[self.s][action]:
             if prob <= p:
-                self.state = nextState # ???
+                self.s = nextState # ???
                 return (nextState, reward, is_terminal, {}) 
             prob -= p   
         return None, None, None, None
 
     def _render(self, mode='human', close=False):
-        pass
+        outfile = StringIO() if mode == 'ansi' else sys.stdout
+        queues = ["" for x in range(3)]
+        for i in range(3):
+            queues[i] += "> " if self.s[0]==i+1 else "  "
+            queues[i] += "o"*self.s[i+1]
+            outfile.write(queues[i])
+        return outfile
+        #pass
 
     def _seed(self, seed=None):
         """Set the random seed.
