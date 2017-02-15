@@ -3,7 +3,7 @@
 
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
-
+import sys
 from gym import Env, spaces
 from gym.envs.registration import register
 
@@ -39,7 +39,7 @@ class QueueEnv(Env):
         self.receivingProb = {0:p1,1:p2,2:p3}
         self.nS = 3*6*6*6 
         self.nA = 4 
-        self.P = {s : {a : [] for a in range(nA)} for s in range(nS)}
+        self.P = {}# {s : {a : [] for a in range(nA)} for s in range(nS)}
         self.s = (1,0,0,0) #???
         # case: read current and it's current
         # 0-4 items get a new item with probability -> transition to state 
@@ -55,42 +55,92 @@ class QueueEnv(Env):
 
         # read on current queue
         for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
-            self.P[(act,q1,q2,q3)] = {}
             for act in range(1,4):
-                self.P[(act,q1,q2,q3)][act] = []
+                self.P[(act,q1,q2,q3)] = {3:[]}
+                if (act==1 and q1 == 0) or (act==2 and q2==0) or (act==3 and q3==0):
+                    self.P[(act,q1,q2,q3)] = \
+                        [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1),self.add(q3,1)), 0.0, False), \
+                         ((1-p1)*p2*p3, (act,q1,self.add(q2,1),self.add(q3,1)), 0.0, False), \
+                         (p1*(1-p2)*p3, (act,self.add(q1,1),q2,self.add(q3,1)), 0.0, False), \
+                         (p1*p2*(1-p3), (act,self.add(q1,1),self.add(q2,1),q3), 0.0, False), \
+                         ((1-p1)*(1-p2)*p3, (act,q1,q2,self.add(q3,1)), 0.0, False), \
+                         ((1-p1)*p2*(1-p3), (act,q1,self.add(q2,1),q3), 0.0, False), \
+                         (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2,q3), 0.0, False), \
+                         ((1-p1)*(1-p2)*(1-p3), (act,q1,q2,q3), 0.0, False)]
+                elif act == 1:
+                     self.P[(act,q1,q2,q3)] = \
+                        [(p1*p2*p3, (act,self.add(q1,1-1),self.add(q2,1),self.add(q3,1)), 1.0, False), \
+                         ((1-p1)*p2*p3, (act,q1-1,self.add(q2,1),self.add(q3,1)), 1.0, False), \
+                         (p1*(1-p2)*p3, (act,self.add(q1,1-1),q2,self.add(q3,1)), 1.0, False), \
+                         (p1*p2*(1-p3), (act,self.add(q1,1-1),self.add(q2,1),q3), 1.0, False), \
+                         ((1-p1)*(1-p2)*p3, (act,q1-1,q2,self.add(q3,1)), 1.0, False), \
+                         ((1-p1)*p2*(1-p3), (act,q1-1,self.add(q2,1),q3), 1.0, False), \
+                         (p1*(1-p2)*(1-p3), (act,self.add(q1,1-1),q2,q3), 1.0, False), \
+                         ((1-p1)*(1-p2)*(1-p3), (act,q1-1,q2,q3), 1.0, False)]
+                elif act == 2:
+                     self.P[(act,q1,q2,q3)] = \
+                        [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1-1),self.add(q3,1)), 1.0, False), \
+                         ((1-p1)*p2*p3, (act,q1,self.add(q2,1-1),self.add(q3,1)), 1.0, False), \
+                         (p1*(1-p2)*p3, (act,self.add(q1,1),q2-1,self.add(q3,1)), 1.0, False), \
+                         (p1*p2*(1-p3), (act,self.add(q1,1),self.add(q2,1-1),q3), 1.0, False), \
+                         ((1-p1)*(1-p2)*p3, (act,q1,q2-1,self.add(q3,1)), 1.0, False), \
+                         ((1-p1)*p2*(1-p3), (act,q1,self.add(q2,1-1),q3), 1.0, False), \
+                         (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2-1,q3), 1.0, False), \
+                         ((1-p1)*(1-p2)*(1-p3), (act,q1,q2-1,q3), 1.0, False)]
+                elif act == 3:
+                     self.P[(act,q1,q2,q3)] = \
+                        [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1),self.add(q3,1-1)), 1.0, False), \
+                         ((1-p1)*p2*p3, (act,q1,self.add(q2,1),self.add(q3,1-1)), 1.0, False), \
+                         (p1*(1-p2)*p3, (act,self.add(q1,1),q2,self.add(q3,1-1)), 1.0, False), \
+                         (p1*p2*(1-p3), (act,self.add(q1,1),self.add(q2,1),q3-1), 1.0, False), \
+                         ((1-p1)*(1-p2)*p3, (act,q1,q2,self.add(q3,1-1)), 1.0, False), \
+                         ((1-p1)*p2*(1-p3), (act,q1,self.add(q2,1),q3-1), 1.0, False), \
+                         (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2,q3-1), 1.0, False), \
+                         ((1-p1)*(1-p2)*(1-p3), (act,q1,q2,q3-1), 1.0, False)]
+ 
+
+
+                '''
                 if act == 1:
                     if q1 != 0:
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p1,(act,q1,q2,q3),1.0,False), \
                              (p2,(act,q1-1,min(q2+1,6),q3),1.0,False), \
-                             (p3,(act,q1-1,q2,min(q3+1,6)),1.0,False)]
+                             (p3,(act,q1-1,q2,min(q3+1,6)),1.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1-1,q2,q3),1.0,False)]
                     else:
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p1,(act,q1+1,q2,q3),0.0,False), \
                              (p2,(act,q1,min(q2+1,6),q3),0.0,False), \
-                             (p3,(act,q1,q2,min(q3+1,6)),0.0,False)]
+                             (p3,(act,q1,q2,min(q3+1,6)),0.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
                 elif act == 2:
                     if q2 != 0:
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p2,(act,q1,q2,q3),1.0,False), \
                              (p1,(act,min(q1+1,6),q2-1,q3),1.0,False), \
-                             (p3,(act,q1,q2-1,min(q3+1,6)),1.0,False)]
+                             (p3,(act,q1,q2-1,min(q3+1,6)),1.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1,q2-1,q3),1.0,False)]
                     else:
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p2,(act,q1,q2+1,q3),0.0,False), \
                              (p1,(act,min(q1+1,6),q2,q3),0.0,False), \
-                             (p3,(act,q1,q2,min(q3+1)),0.0,False)]
+                             (p3,(act,q1,q2,min(q3+1,6)),0.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
                 elif act == 3:
                     if q3 !=0:
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p3,(act,q1,q2,q3),1.0), \
                              (p1,(act,q1,min(q2+1,6),q3-1),1.0,False), \
-                             (p2,(act,min(q1+1,6),q2,q3-1),1.0,False)]
+                             (p2,(act,min(q1+1,6),q2,q3-1),1.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1,q2,q3-1),1.0,False)]
                     else: 
                         self.P[(act,q1,q2,q3)][3]+= \
                             [(p3,(act,q1,q2,q3+1),0.0), \
                              (p1,(act,min(q1+1,6),q2,q3),0.0,False), \
-                             (p2,(act,q1,min(q2+1,6),q3),0.0,False)]
+                             (p2,(act,q1,min(q2+1,6),q3),0.0,False), \
+                             (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
+                '''
 
         # transit to other queue
         for (q_from, q_to) in [(x,y) for x in range(1,4) for y in range(1,4)]:
@@ -99,12 +149,21 @@ class QueueEnv(Env):
                     self.P[(q_from,q1,q2,q3)][q_to-1]= \
                           [(p1,(q_to,min(q1+1,6),q2,q3),0.0), \
                            (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
-                           (p3,(q_to,q1,q2,min(q3+1,6)),0.0)]
-                else:
-                    self.P[(q_from,q1,q2,q3)][q_to-1] += \
-                          [(p1,(q_to,min(q1+1,6),q2,q3),0.0), \
-                           (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
-                           (p3,(q_to,q1,q2,min(q3+1,6)),0.0)]
+                           (p3,(q_to,q1,q2,min(q3+1,6)),0.0), \
+                           (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
+                #else:
+                #    self.P[(q_from,q1,q2,q3)][q_to-1] += \
+                #          [(p1,(q_to,min(q1+1,6),q2,q3),0.0), \
+                #           (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
+                #           (p3,(q_to,q1,q2,min(q3+1,6)),0.0), \
+                #           (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
+
+
+    def add(self, q, n):
+        if n >= 0:
+            return max(q+n,6)
+        else:
+            return min(q+n,0)
 
     def _reset(self):
         """Reset the environment.
