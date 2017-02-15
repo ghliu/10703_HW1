@@ -3,7 +3,6 @@ from __future__ import division, absolute_import
 from __future__ import print_function, unicode_literals
 
 import numpy as np
-from ipdb import set_trace as debug
 
 def evaluate_policy(env, gamma, policy, max_iterations=int(1e3), tol=1e-3):
     """Evaluate the value of a policy.

@@ -58,7 +58,7 @@ class QueueEnv(Env):
             for act in range(1,4):
                 self.P[(act,q1,q2,q3)] = {3:[]}
                 if (act==1 and q1 == 0) or (act==2 and q2==0) or (act==3 and q3==0):
-                    self.P[(act,q1,q2,q3)] = \
+                    self.P[(act,q1,q2,q3)][3] = \
                         [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1),self.add(q3,1)), 0.0, False), \
                          ((1-p1)*p2*p3, (act,q1,self.add(q2,1),self.add(q3,1)), 0.0, False), \
                          (p1*(1-p2)*p3, (act,self.add(q1,1),q2,self.add(q3,1)), 0.0, False), \
@@ -68,7 +68,7 @@ class QueueEnv(Env):
                          (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2,q3), 0.0, False), \
                          ((1-p1)*(1-p2)*(1-p3), (act,q1,q2,q3), 0.0, False)]
                 elif act == 1:
-                     self.P[(act,q1,q2,q3)] = \
+                     self.P[(act,q1,q2,q3)][3] = \
                         [(p1*p2*p3, (act,self.add(q1,1-1),self.add(q2,1),self.add(q3,1)), 1.0, False), \
                          ((1-p1)*p2*p3, (act,q1-1,self.add(q2,1),self.add(q3,1)), 1.0, False), \
                          (p1*(1-p2)*p3, (act,self.add(q1,1-1),q2,self.add(q3,1)), 1.0, False), \
@@ -78,7 +78,7 @@ class QueueEnv(Env):
                          (p1*(1-p2)*(1-p3), (act,self.add(q1,1-1),q2,q3), 1.0, False), \
                          ((1-p1)*(1-p2)*(1-p3), (act,q1-1,q2,q3), 1.0, False)]
                 elif act == 2:
-                     self.P[(act,q1,q2,q3)] = \
+                     self.P[(act,q1,q2,q3)][3] = \
                         [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1-1),self.add(q3,1)), 1.0, False), \
                          ((1-p1)*p2*p3, (act,q1,self.add(q2,1-1),self.add(q3,1)), 1.0, False), \
                          (p1*(1-p2)*p3, (act,self.add(q1,1),q2-1,self.add(q3,1)), 1.0, False), \
@@ -88,7 +88,7 @@ class QueueEnv(Env):
                          (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2-1,q3), 1.0, False), \
                          ((1-p1)*(1-p2)*(1-p3), (act,q1,q2-1,q3), 1.0, False)]
                 elif act == 3:
-                     self.P[(act,q1,q2,q3)] = \
+                     self.P[(act,q1,q2,q3)][3] = \
                         [(p1*p2*p3, (act,self.add(q1,1),self.add(q2,1),self.add(q3,1-1)), 1.0, False), \
                          ((1-p1)*p2*p3, (act,q1,self.add(q2,1),self.add(q3,1-1)), 1.0, False), \
                          (p1*(1-p2)*p3, (act,self.add(q1,1),q2,self.add(q3,1-1)), 1.0, False), \
@@ -97,8 +97,6 @@ class QueueEnv(Env):
                          ((1-p1)*p2*(1-p3), (act,q1,self.add(q2,1),q3-1), 1.0, False), \
                          (p1*(1-p2)*(1-p3), (act,self.add(q1,1),q2,q3-1), 1.0, False), \
                          ((1-p1)*(1-p2)*(1-p3), (act,q1,q2,q3-1), 1.0, False)]
- 
-
 
                 '''
                 if act == 1:
@@ -142,6 +140,22 @@ class QueueEnv(Env):
                              (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
                 '''
 
+
+        for (q_from, q_to) in [(x,y) for x in range(1,4) for y in range(1,4)]:
+            for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
+                if q_to-1 not in self.P[(q_from,q1,q2,q3)]:
+                     self.P[(q_from,q1,q2,q3)][q_to-1] = \
+                        [(p1*p2*p3, (q_to,self.add(q1,1),self.add(q2,1),self.add(q3,1)), 0.0, False), \
+                         ((1-p1)*p2*p3, (q_to,q1,self.add(q2,1),self.add(q3,1)), 0.0, False), \
+                         (p1*(1-p2)*p3, (q_to,self.add(q1,1),q2,self.add(q3,1)), 0.0, False), \
+                         (p1*p2*(1-p3), (q_to,self.add(q1,1),self.add(q2,1),q3), 0.0, False), \
+                         ((1-p1)*(1-p2)*p3, (q_to,q1,q2,self.add(q3,1)), 0.0, False), \
+                         ((1-p1)*p2*(1-p3), (q_to,q1,self.add(q2,1),q3), 0.0, False), \
+                         (p1*(1-p2)*(1-p3), (q_to,self.add(q1,1),q2,q3), 0.0, False), \
+                         ((1-p1)*(1-p2)*(1-p3), (q_to,q1,q2,q3), 0.0, False)]
+ 
+
+        '''
         # transit to other queue
         for (q_from, q_to) in [(x,y) for x in range(1,4) for y in range(1,4)]:
             for (q1,q2,q3) in [(x,y,z) for x in range(6) for y in range(6) for z in range(6)]:
@@ -157,7 +171,7 @@ class QueueEnv(Env):
                 #           (p2,(q_to,q1,min(q2+1,6),q3),0,0), \
                 #           (p3,(q_to,q1,q2,min(q3+1,6)),0.0), \
                 #           (max(0,1-(p1+p2+p3)),(act,q1,q2,q3),0.0,False)]
-
+        '''
 
     def add(self, q, n):
         if n >= 0:
