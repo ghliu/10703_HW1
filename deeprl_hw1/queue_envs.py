@@ -175,7 +175,7 @@ class QueueEnv(Env):
 
     def add(self, q, n):
         if n >= 0:
-            return min(q+n,6)
+            return min(q+n,5)
         else:
             return max(q+n,0)
 
